@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuildA - Retro Construction Learning Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        .font-gameboy { font-family: 'Press+Start+2P', monospace; }
+        
+        /* Game Boy Palette (Greens) */
+        .gb-darkest { background-color: #0f380f; }
+        .gb-dark { background-color: #306230; }
+        .gb-light { background-color: #8bac0f; }
+        .gb-lightest { background-color: #9bbc0f; }
+        
+        .gb-text-darkest { color: #0f380f; }
+        .gb-text-dark { color: #306230; }
+        .gb-text-light { color: #8bac0f; }
+        .gb-text-lightest { color: #9bbc0f; }
+
+        .gb-border {
+            border: 4px solid #0f380f;
+            box-shadow: 6px 6px 0px #0f380f;
+        }
+
+        .gb-btn {
+            background-color: #306230;
+            color: #9bbc0f;
+            border: 3px solid #0f380f;
+            box-shadow: 3px 3px 0px #0f380f;
+            transition: all 0.1s ease;
+        }
+        .gb-btn:hover {
+            background-color: #8bac0f;
+            color: #0f380f;
+            transform: translateY(-2px);
+            box-shadow: 4px 4px 0px #0f380f;
+        }
+        .gb-btn:active {
+            transform: translateY(2px);
+            box-shadow: 1px 1px 0px #0f380f;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="gb-lightest gb-text-darkest font-gameboy min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div id="app" class="max-w-4xl w-full gb-darkest p-4 md:p-6 rounded-3xl gb-border relative flex flex-col items-center">
+        
+        <!-- Header Banner -->
+        <div class="w-full text-center mb-4">
+            <div class="inline-block bg-emerald-900 text-lime-300 px-4 py-2 rounded-xl border-2 border-lime-400 text-xs md:text-sm mb-2 shadow">
+                🏗️ DIPLOMA INTERIOR DESIGN: BUILDING CONSTRUCTION 🏗️
+            </div>
+            <h1 class="text-2xl md:text-4xl text-lime-400 tracking-wider drop-shadow-[2px_2px_0px_#0f380f]">
+                BUILDA: RETRO TARGET SHOOTER
+            </h1>
+        </div>
+
+        <!-- SCREEN VIEW CONTAINER -->
+        <div class="w-full bg-[#9bbc0f] rounded-2xl gb-border p-4 flex flex-col items-center relative overflow-hidden min-h-[480px]">
+            
+            <!-- VIEW 1: HOMEPAGE -->
+            <div id="homeView" class="w-full flex flex-col items-center justify-center text-center py-8">
+                <div class="bg-[#8bac0f] p-6 rounded-xl border-2 border-[#0f380f] mb-6 max-w-2xl shadow-inner">
+                    <h2 class="text-lg md:text-xl text-[#0f380f] mb-3">LEARNING OUTCOME</h2>
+                    <p class="text-xs md:text-sm text-[#0f380f] leading-relaxed mb-4">
+                        Identify how theoretical studies of floor, wall, ceiling, and roof construction apply in practice through interactive target engagement!
+                    </p>
+                    <div class="text-[10px] md:text-xs text-emerald-900 font-bold space-y-1">
+                        <p>🎯 Shoot moving PRESENT boxes to unlock quiz questions.</p>
+                        <p>⚡ Answer correctly to gain superpowers & defeat opponents!</p>
+                        <p>⏱️ 10 Questions | 5 Minute Arcade Challenge</p>
+                    </div>
+                </div>
+
+                <!-- Difficulty Selector -->
+                <div class="mb-6 flex gap-3">
+                    <button onclick="setDifficulty('easy')" id="btn-easy" class="gb-btn px-4 py-2 text-xs rounded-lg bg-emerald-700">EASY</button>
+                    <button onclick="setDifficulty('medium')" id="btn-medium" class="gb-btn px-4 py-2 text-xs rounded-lg">MEDIUM</button>
+                    <button onclick="setDifficulty('hard')" id="btn-hard" class="gb-btn px-4 py-2 text-xs rounded-lg">HARD</button>
+                </div>
+
+                <button onclick="startGame()" class="gb-btn text-sm md:text-lg px-8 py-4 rounded-xl font-bold animate-pulse">
+                    ▶ PRESS START TO PLAY
+                </button>
+            </div>
+
+            <!-- VIEW 2: GAMEPLAY ARENA -->
+            <div id="gameView" class="w-full flex flex-col items-center hidden relative">
+                
+                <!-- HUD Bar -->
+                <div class="w-full flex justify-between items-center bg-[#8bac0f] px-4 py-2 rounded-xl border-2 border-[#0f380f] mb-2 text-xs">
+                    <div>Q: <span id="currentQNum">1</span>/10</div>
+                    <div>SCORE: <span id="scoreVal">0</span></div>
+                    <div>POWER: <span id="powerStatus" class="text-red-900 font-bold">LOCKED 🔒</span></div>
+                    <div>TIME: <span id="timerVal">300</span>s</div>
+                </div>
+
+                <!-- Active Question Box -->
+                <div id="questionBox" class="w-full bg-[#306230] text-[#9bbc0f] p-3 rounded-xl border-2 border-[#0f380f] text-xs md:text-sm text-center mb-2 shadow">
+                    Question loading...
+                </div>
+
+                <!-- Canvas Arena -->
+                <div class="w-full h-72 md:h-80 bg-[#306230] rounded-xl border-2 border-[#0f380f] relative overflow-hidden cursor-crosshair shadow-inner" id="canvasContainer">
+                    <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Instruction Overlay in Canvas -->
+                    <div id="arenaMsg" class="absolute inset-x-4 top-4 bg-black/60 text-lime-300 text-center text-xs p-2 rounded pointer-events-none">
+                        Use ARROW KEYS / A-D to move, SPACEBAR to shoot present boxes!
+                    </div>
+                </div>
+
+                <!-- Touch controls for mobile/tablet -->
+                <div class="w-full flex justify-between mt-3 gap-2 md:hidden">
+                    <button ontouchstart="movePlayer(-1)" onmousedown="movePlayer(-1)" class="gb-btn px-6 py-3 text-xs rounded-lg flex-1">◀ LEFT</button>
+                    <button ontouchstart="shootAction()" onmousedown="shootAction()" class="gb-btn px-6 py-3 text-xs rounded-lg flex-1 bg-red-800 text-white">🔥 SHOOT</button>
+                    <button ontouchstart="movePlayer(1)" onmousedown="movePlayer(1)" class="gb-btn px-6 py-3 text-xs rounded-lg flex-1">RIGHT ▶</button>
+                </div>
+            </div>
+
+            <!-- VIEW 3: QUIZ POPUP MODAL -->
+            <div id="quizModal" class="absolute inset-0 bg-[#0f380f]/90 flex flex-col items-center justify-center p-6 hidden z-50">
+                <div class="bg-[#9bbc0f] border-4 border-[#0f380f] rounded-2xl p-6 max-w-lg w-full text-center shadow-2xl">
+                    <span class="bg-[#306230] text-[#9bbc0f] px-3 py-1 rounded text-xs">🎁 PRESENT UNLOCKED!</span>
+                    <h3 id="quizQuestionText" class="text-sm md:text-base text-[#0f380f] my-4 font-bold">Question here</h3>
+                    <div id="quizOptionsContainer" class="flex flex-col gap-3 w-full">
+                        <!-- Options generated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: GAME OVER / RESULTS -->
+            <div id="gameOverView" class="w-full flex flex-col items-center justify-center text-center py-12 hidden">
+                <h2 class="text-2xl md:text-3xl text-[#0f380f] mb-3 font-bold" id="gameOverTitle">CONSTRUCTION COMPLETE!</h2>
+                <p class="text-xs md:text-sm text-[#306230] mb-6" id="gameOverDesc">You scored 0 points.</p>
+                <button onclick="returnToHome()" class="gb-btn text-xs md:text-sm px-6 py-3 rounded-xl font-bold">
+                    🔄 PLAY AGAIN
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="w-full text-center mt-4 text-[10px] text-lime-400">
+            BuildA Game Engine v1.0 • GitHub Pages Ready
+        </div>
+    </div>
+
+    <script>
+        // Game state variables
+        let difficulty = 'easy';
+        let score = 0;
+        let currentQuestionIndex = 0;
+        let gameTimer = 300;
+        let timerInterval = null;
+        let isPlaying = false;
+        let powerUnlocked = false;
+
+        // Questions Database (Building Construction: Floor, Wall, Ceiling, Roof)
+        const questions = [
+            {
+                q: "What is the primary structural horizontal element that supports floor loads?",
+                options: ["Joist / Beam", "Roof Shingle", "Wall Skirting", "Window Lintel"],
+                correct: 0
+            },
+            {
+                q: "Which wall component bears loads from above and transfers them to the foundation?",
+                options: ["Partition Wall", "Load-bearing Wall", "Curtain Wall", "Wallpaper"],
+                correct: 1
+            },
+            {
+                q: "What material layer is typically placed beneath concrete floor slabs to prevent moisture rise?",
+                options: ["Carpet Padding", "Damp Proof Membrane (DPM)", "Roof Felt", "Drywall Tape"],
+                correct: 1
+            },
+            {
+                q: "In ceiling construction, what is the vertical framing member supporting wallboards called?",
+                options: ["Stud", "Rafter", "Purlin", "Truss"],
+                correct: 0
+            },
+            {
+                q: "What is the topmost inclined structural member of a pitched roof system?",
+                options: ["Ridge beam", "Floor Joist", "Baseboard", "Threshold"],
+                correct: 0
+            },
+            {
+                q: "Which roof type features slopes on all four sides meeting at a ridge?",
+                options: ["Flat roof", "Gable roof", "Hip roof", "Shed roof"],
+                correct: 2
+            },
+            {
+                q: "What lining material is most commonly screw-fixed to interior wall and ceiling studs?",
+                options: ["Gypsum Board / Drywall", "Poured Concrete", "Corrugated Steel", "Glass Pane"],
+                correct: 0
+            },
+            {
+                q: "What is the horizontal timber or steel beam placed over a window or door opening?",
+                options: ["Lintel", "Foundation", "Skirting", "Rafter"],
+                correct: 0
+            },
+            {
+                q: "Which layer in flat roof construction prevents water leakage from entering the building envelope?",
+                options: ["Waterproofing Membrane", "Acoustic Insulation", "Floor Tile", "Interior Paint"],
+                correct: 0
+            },
+            {
+                q: "What is the function of ceiling insulation batts installed between roof joists?",
+                options: ["Thermal & Sound Control", "To support heavy chandeliers", "To paint the ceiling white", "To hold floor tiles"],
+                correct: 0
+            }
+        ];
+
+        // Canvas & Game Objects
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let player = { x: 200, y: 220, width: 30, height: 35, speed: 5 };
+        let bullets = [];
+        let targets = []; // Present boxes & opponent targets
+        let keys = {};
+
+        function setDifficulty(level) {
+            difficulty = level;
+            ['easy', 'medium', 'hard'].forEach(l => {
+                const btn = document.getElementById(`btn-${l}`);
+                if (l === level) {
+                    btn.classList.add('bg-emerald-700', 'text-white');
+                } else {
+                    btn.classList.remove('bg-emerald-700', 'text-white');
+                }
+            });
+        }
+
+        function startGame() {
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('gameView').classList.remove('hidden');
+            document.getElementById('gameOverView').classList.add('hidden');
+            
+            score = 0;
+            currentQuestionIndex = 0;
+            gameTimer = difficulty === 'easy' ? 300 : difficulty === 'medium' ? 200 : 120;
+            powerUnlocked = false;
+            isPlaying = true;
+
+            updateHUD();
+            resizeCanvas();
+            initTargets();
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                gameTimer--;
+                document.getElementById('timerVal').innerText = gameTimer;
+                if (gameTimer <= 0) {
+                    endGame(true);
+                }
+            }, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            player.y = canvas.height - 45;
+            player.x = canvas.width / 2 - 15;
+        }
+
+        window.addEventListener('resize', () => {
+            if (isPlaying) resizeCanvas();
+        });
+
+        // Controls
+        window.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if (e.key === ' ' && isPlaying) {
+                shootAction();
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+        function movePlayer(dir) {
+            player.x += dir * 15;
+            if (player.x < 10) player.x = 10;
+            if (player.x > canvas.width - 40) player.x = canvas.width - 40;
+        }
+
+        function shootAction() {
+            bullets.push({
+                x: player.x + player.width / 2 - 3,
+                y: player.y,
+                width: 6,
+                height: 12,
+                speed: 8,
+                isSuper: powerUnlocked
+            });
+        }
+
+        function initTargets() {
+            targets = [];
+            // Spawn present boxes & rival targets
+            let count = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 4 : 5;
+            for (let i = 0; i < count; i++) {
+                targets.push({
+                    x: Math.random() * (canvas.width - 60) + 20,
+                    y: 40 + (i * 35),
+                    width: 36,
+                    height: 30,
+                    speed: (Math.random() > 0.5 ? 1 : -1) * (difficulty === 'hard' ? 3 : 2),
+                    type: i === 0 ? 'present' : 'rival'
+                });
+            }
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            // Handle Keyboard movement
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) movePlayer(-1);
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) movePlayer(1);
+
+            // Clear canvas
+            ctx.fillStyle = '#306230';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid lines for retro aesthetic
+            ctx.strokeStyle = '#386c38';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 30) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+
+            // Update & Draw Bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.y -= b.speed;
+                
+                ctx.fillStyle = b.isSuper ? '#ff0055' : '#9bbc0f';
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+
+                if (b.y < 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with targets
+                for (let j = targets.length - 1; j >= 0; j--) {
+                    let t = targets[j];
+                    if (b.x < t.x + t.width && b.x + b.width > t.x &&
+                        b.y < t.y + t.height && b.y + b.height > t.y) {
+                        
+                        // Hit registered!
+                        bullets.splice(i, 1);
+                        
+                        if (t.type === 'present') {
+                            triggerQuiz();
+                        } else {
+                            score += powerUnlocked ? 50 : 20;
+                            document.getElementById('scoreVal').innerText = score;
+                            // respawn target
+                            t.x = Math.random() * (canvas.width - 60);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Update & Draw Targets
+            for (let t of targets) {
+                t.x += t.speed;
+                if (t.x <= 10 || t.x >= canvas.width - t.width - 10) {
+                    t.speed *= -1;
+                }
+
+                // Draw Target Box (Present or Rival Player)
+                ctx.fillStyle = t.type === 'present' ? '#9bbc0f' : '#0f380f';
+                ctx.fillRect(t.x, t.y, t.width, t.height);
+                ctx.strokeStyle = '#9bbc0f';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(t.x, t.y, t.width, t.height);
+
+                // Draw icon inside target
+                ctx.fillStyle = t.type === 'present' ? '#0f380f' : '#9bbc0f';
+                ctx.font = '10px monospace';
+                ctx.fillText(t.type === 'present' ? '🎁' : '👾', t.x + 8, t.y + 20);
+            }
+
+            // Draw Player Character (Gameboy Tank/Shooter)
+            ctx.fillStyle = '#9bbc0f';
+            ctx.fillRect(player.x, player.y + 10, player.width, player.height - 10);
+            // Cannon barrel
+            ctx.fillRect(player.x + player.width / 2 - 3, player.y, 6, 12);
+            // Head/Base details
+            ctx.fillStyle = '#0f380f';
+            ctx.fillRect(player.x + 6, player.y + 16, 6, 6);
+            ctx.fillRect(player.x + 18, player.y + 16, 6, 6);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerQuiz() {
+            isPlaying = false; // Pause game loop during quiz
+            const q = questions[currentQuestionIndex];
+            
+            document.getElementById('quizQuestionText').innerText = q.q;
+            const container = document.getElementById('quizOptionsContainer');
+            container.innerHTML = '';
+
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'gb-btn p-3 text-xs rounded-xl w-full text-left font-bold';
+                btn.innerText = `${String.fromCharCode(65 + index)}. ${opt}`;
+                btn.onclick = () => submitAnswer(index === q.correct);
+                container.appendChild(btn);
+            });
+
+            document.getElementById('quizModal').classList.remove('hidden');
+        }
+
+        function submitAnswer(isCorrect) {
+            document.getElementById('quizModal').classList.add('hidden');
+            
+            if (isCorrect) {
+                score += 100;
+                powerUnlocked = true;
+                document.getElementById('powerStatus').innerText = 'ACTIVE ⚡';
+                document.getElementById('powerStatus').className = 'text-lime-300 font-bold';
+            } else {
+                score = Math.max(0, score - 20);
+            }
+
+            document.getElementById('scoreVal').innerText = score;
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex >= questions.length) {
+                endGame(false);
+            } else {
+                document.getElementById('currentQNum').innerText = currentQuestionIndex + 1;
+                isPlaying = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('currentQNum').innerText = currentQuestionIndex + 1;
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('questionBox').innerText = questions[0].q;
+        }
+
+        function endGame(isTimeout) {
+            isPlaying = false;
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById('gameView').classList.add('hidden');
+            document.getElementById('gameOverView').classList.remove('hidden');
+
+            const title = isTimeout ? "TIME'S UP!" : "CONSTRUCTION ACADEMIC COMPLETE!";
+            document.getElementById('gameOverTitle').innerText = title;
+            document.getElementById('gameOverDesc').innerText = `Final Score: ${score} pts | Questions Mastered: ${currentQuestionIndex}/10`;
+        }
+
+        function returnToHome() {
+            document.getElementById('gameOverView').classList.add('hidden');
+            document.getElementById('homeView').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
